@@ -42,9 +42,10 @@ class VectorStore:
         self._ensure_init()
         try:
             result = self._collection.get(ids=[photo_id], include=["embeddings"])
-            if not result["embeddings"]:
+            embeddings = result["embeddings"]
+            if embeddings is None or len(embeddings) == 0:
                 return []
-            embedding = result["embeddings"][0]
+            embedding = embeddings[0]
         except Exception:
             return []
 

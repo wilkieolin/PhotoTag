@@ -26,7 +26,7 @@ export default function PhotosPage() {
     [sortBy, sortOrder, selectedTagIds],
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfinitePhotos(params);
+  const { data, fetchNextPage, hasNextPage } = useInfinitePhotos(params);
 
   const photos = useMemo(
     () => data?.pages.flatMap((p) => p.items) ?? [],

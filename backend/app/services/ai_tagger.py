@@ -3,6 +3,8 @@ import re
 import ollama as ollama_client
 from ..config import settings
 
+_client = ollama_client.Client(host=settings.ollama_base_url, timeout=settings.ollama_timeout)
+
 TAGGING_PROMPT = """Analyze this photograph and provide descriptive tags.
 Return a JSON object with this exact format:
 {
@@ -28,7 +30,7 @@ def generate_tags(image_path: str, max_retries: int = 3) -> dict:
     last_error = None
     for attempt in range(max_retries):
         try:
-            response = ollama_client.chat(
+            response = _client.chat(
                 model=settings.ollama_model,
                 messages=[{
                     "role": "user",

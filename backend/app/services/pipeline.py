@@ -266,65 +266,66 @@ async def run_scan_pipeline(
             from .embedding import clip_manager
             from .vector_store import vector_store
 
-            if clip_manager.is_loaded:
-                task_manager.update(task_id, progress={
-                    "phase": "embeddings", "total": len(new_photo_ids), "current": 0,
-                })
+            clip_manager.load()
 
-                batch_size = settings.clip_batch_size
-                for i in range(0, len(new_photo_ids), batch_size):
-                    batch_ids = new_photo_ids[i:i + batch_size]
-                    batch_paths = []
+            task_manager.update(task_id, progress={
+                "phase": "embeddings", "total": len(new_photo_ids), "current": 0,
+            })
+
+            batch_size = settings.clip_batch_size
+            for i in range(0, len(new_photo_ids), batch_size):
+                batch_ids = new_photo_ids[i:i + batch_size]
+                batch_paths = []
+                async with get_db_ctx() as db:
+                    for pid in batch_ids:
+                        cursor = await db.execute(
+                            "SELECT file_path FROM photos WHERE id = ?", (pid,)
+                        )
+                        row = await cursor.fetchone()
+                        if row:
+                            batch_paths.append(row["file_path"])
+
+                if batch_paths:
+                    embeddings = await loop.run_in_executor(
+                        None, clip_manager.embed_images, batch_paths, batch_size
+                    )
+
+                    metadatas = []
                     async with get_db_ctx() as db:
                         for pid in batch_ids:
                             cursor = await db.execute(
-                                "SELECT file_path FROM photos WHERE id = ?", (pid,)
+                                "SELECT date_taken, latitude, longitude FROM photos WHERE id = ?",
+                                (pid,),
                             )
                             row = await cursor.fetchone()
+                            meta = {"photo_id": pid}
                             if row:
-                                batch_paths.append(row["file_path"])
+                                if row["date_taken"]:
+                                    meta["date_taken"] = row["date_taken"]
+                                if row["latitude"] is not None:
+                                    meta["latitude"] = row["latitude"]
+                                if row["longitude"] is not None:
+                                    meta["longitude"] = row["longitude"]
+                            metadatas.append(meta)
 
-                    if batch_paths:
-                        embeddings = await loop.run_in_executor(
-                            None, clip_manager.embed_images, batch_paths, batch_size
-                        )
+                    vector_store.upsert_batch(
+                        batch_ids,
+                        embeddings.tolist(),
+                        metadatas,
+                    )
 
-                        metadatas = []
-                        async with get_db_ctx() as db:
-                            for pid in batch_ids:
-                                cursor = await db.execute(
-                                    "SELECT date_taken, latitude, longitude FROM photos WHERE id = ?",
-                                    (pid,),
-                                )
-                                row = await cursor.fetchone()
-                                meta = {"photo_id": pid}
-                                if row:
-                                    if row["date_taken"]:
-                                        meta["date_taken"] = row["date_taken"]
-                                    if row["latitude"] is not None:
-                                        meta["latitude"] = row["latitude"]
-                                    if row["longitude"] is not None:
-                                        meta["longitude"] = row["longitude"]
-                                metadatas.append(meta)
+                    async with get_db_ctx() as db:
+                        for pid in batch_ids:
+                            await db.execute(
+                                "UPDATE photos SET has_embedding = TRUE WHERE id = ?",
+                                (pid,),
+                            )
+                        await db.commit()
 
-                        vector_store.upsert_batch(
-                            batch_ids,
-                            embeddings.tolist(),
-                            metadatas,
-                        )
-
-                        async with get_db_ctx() as db:
-                            for pid in batch_ids:
-                                await db.execute(
-                                    "UPDATE photos SET has_embedding = TRUE WHERE id = ?",
-                                    (pid,),
-                                )
-                            await db.commit()
-
-                    task_manager.update(task_id, progress={
-                        "phase": "embeddings", "total": len(new_photo_ids),
-                        "current": min(i + batch_size, len(new_photo_ids)),
-                    })
+                task_manager.update(task_id, progress={
+                    "phase": "embeddings", "total": len(new_photo_ids),
+                    "current": min(i + batch_size, len(new_photo_ids)),
+                })
 
         except ImportError:
             logger.info("CLIP model not available, skipping embeddings")

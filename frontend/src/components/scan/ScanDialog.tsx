@@ -7,7 +7,6 @@ export default function ScanDialog() {
   const [directory, setDirectory] = useState('');
   const [recursive, setRecursive] = useState(true);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [activeScanId, setActiveScanId] = useState<number | null>(null);
   const scan = useScan();
   const { data: task } = useTaskStatus(activeTaskId);
   const { data: directories = [] } = useDirectories();
@@ -18,7 +17,6 @@ export default function ScanDialog() {
     try {
       const result = await scan.mutateAsync({ directory: directory.trim(), recursive });
       setActiveTaskId(result.task_id);
-      setActiveScanId(result.scan_id);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Scan failed';
       alert(msg);

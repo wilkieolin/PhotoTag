@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, Calendar, Camera, Sparkles, Search, Clock } from 'lucide-react';
+import { X, MapPin, Camera, Sparkles, Search, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Photo } from '../../types/photo';
 import { fullImageUrl } from '../../api/photos';
@@ -30,8 +30,6 @@ export default function PhotoDetail({ photoId, onClose }: Props) {
       </div>
     );
   }
-
-  const date = photo.date_taken || photo.date_file;
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'info', label: 'Info', icon: <Camera size={14} /> },

@@ -18,7 +18,7 @@ A self-hosted web application for browsing, tagging, and searching a personal ph
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS |
 | Backend | Python, FastAPI, uvicorn |
 | Metadata database | SQLite (WAL mode, via aiosqlite) |
 | Vector database | ChromaDB (embedded, persistent) |
