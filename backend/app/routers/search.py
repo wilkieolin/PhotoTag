@@ -113,7 +113,7 @@ async def find_nearby(
             )
             rows = await cursor.fetchall()
             for r in rows:
-                results.append(PhotoOut(**{k: dict(r)[k] for k in PhotoOut.model_fields}))
+                results.append(PhotoOut(**dict(r)))
 
         # Location-based neighbors
         if photo["latitude"] is not None and photo["longitude"] is not None:
@@ -137,7 +137,7 @@ async def find_nearby(
 
             geo_results.sort(key=lambda x: x[0])
             for _, r_dict in geo_results[:limit]:
-                p = PhotoOut(**{k: r_dict[k] for k in PhotoOut.model_fields})
+                p = PhotoOut(**r_dict)
                 if p.id not in {x.id for x in results}:
                     results.append(p)
 
@@ -186,12 +186,23 @@ async def photos_in_bounds(
     west: float = Query(...),
     limit: int = Query(200, ge=1, le=1000),
 ) -> list[PhotoOut]:
+    # Leaflet reports longitude as a continuous "world copy" coordinate when
+    # the map is panned across the antimeridian, rather than wrapping it back
+    # into -180..180. Normalize before comparing against stored EXIF longitudes.
+    west = ((west + 180) % 360) - 180
+    east = ((east + 180) % 360) - 180
+
+    if west <= east:
+        lon_clause = "longitude BETWEEN ? AND ?"
+    else:
+        lon_clause = "(longitude >= ? OR longitude <= ?)"
+
     async with get_db_ctx() as db:
         cursor = await db.execute(
-            """SELECT * FROM photos
+            f"""SELECT * FROM photos
                WHERE latitude IS NOT NULL AND longitude IS NOT NULL
                  AND latitude BETWEEN ? AND ?
-                 AND longitude BETWEEN ? AND ?
+                 AND {lon_clause}
                LIMIT ?""",
             (south, north, west, east, limit),
         )
