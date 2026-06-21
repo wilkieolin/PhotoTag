@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, MapPin, Camera, Sparkles, Search, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Photo } from '../../types/photo';
@@ -74,7 +75,7 @@ export default function PhotoDetail({ photoId, onClose }: Props) {
       <div className="flex-1 overflow-auto p-3">
         {activeTab === 'info' && <InfoTab photo={photo} />}
         {activeTab === 'tags' && <TagEditor photo={photo} />}
-        {activeTab === 'similar' && <SimilarPhotos photoId={photo.id} />}
+        {activeTab === 'similar' && <SimilarPhotos photo={photo} />}
         {activeTab === 'nearby' && <NearbyPhotos photo={photo} />}
       </div>
     </div>
@@ -82,6 +83,7 @@ export default function PhotoDetail({ photoId, onClose }: Props) {
 }
 
 function InfoTab({ photo }: { photo: Photo }) {
+  const navigate = useNavigate();
   const date = photo.date_taken || photo.date_file;
   const infoRows: [string, string | null][] = [
     ['Filename', photo.filename],
@@ -112,10 +114,14 @@ function InfoTab({ photo }: { photo: Photo }) {
       </table>
 
       {photo.latitude != null && photo.longitude != null && (
-        <div className="flex items-center gap-1 text-xs text-gray-400">
+        <button
+          onClick={() => navigate(`/map?photo=${photo.id}`)}
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-400"
+        >
           <MapPin size={12} />
           {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
-        </div>
+          <span className="underline ml-1">View on map</span>
+        </button>
       )}
 
       <div className="flex gap-2 text-xs">

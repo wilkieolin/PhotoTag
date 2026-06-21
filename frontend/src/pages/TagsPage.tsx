@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTags, useCreateTag, useDeleteTag } from '../hooks/useTags';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search, Image } from 'lucide-react';
 
 export default function TagsPage() {
+  const navigate = useNavigate();
   const { data: tags = [] } = useTags();
   const createTag = useCreateTag();
   const deleteTag = useDeleteTag();
@@ -70,7 +72,9 @@ export default function TagsPage() {
         {filtered.map((tag) => (
           <div
             key={tag.id}
-            className="flex items-center justify-between bg-gray-800/50 rounded-lg px-4 py-2 group"
+            className="flex items-center justify-between bg-gray-800/50 hover:bg-gray-800 rounded-lg px-4 py-2 group cursor-pointer"
+            onClick={() => navigate(`/photos?tags=${tag.id}`)}
+            title={`View photos tagged "${tag.name}"`}
           >
             <div className="flex items-center gap-2">
               <span
@@ -81,12 +85,18 @@ export default function TagsPage() {
               <span className="text-sm">{tag.name}</span>
               <span className="text-xs text-gray-500">{tag.source}</span>
             </div>
-            <button
-              onClick={() => deleteTag.mutate(tag.id)}
-              className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <Image size={14} className="text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteTag.mutate(tag.id);
+                }}
+                className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         ))}
       </div>

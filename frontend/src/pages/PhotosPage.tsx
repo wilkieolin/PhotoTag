@@ -8,13 +8,36 @@ import PhotoGrid from '../components/photos/PhotoGrid';
 import PhotoDetail from '../components/photos/PhotoDetail';
 import TagSidebar from '../components/tags/TagSidebar';
 
+function parseTagIds(raw: string | null): number[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((s) => Number(s))
+    .filter((n) => !Number.isNaN(n));
+}
+
 export default function PhotosPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get('selected') ? Number(searchParams.get('selected')) : null;
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const selectedTagIds = useMemo(() => parseTagIds(searchParams.get('tags')), [searchParams]);
+  const [showFilters, setShowFilters] = useState(selectedTagIds.length > 0);
   const [sortBy, setSortBy] = useState<PhotoListParams['sort_by']>('date_taken');
   const [sortOrder, setSortOrder] = useState<PhotoListParams['sort_order']>('desc');
+
+  const setSelectedTagIds = useCallback(
+    (tagIds: number[]) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (tagIds.length > 0) {
+          next.set('tags', tagIds.join(','));
+        } else {
+          next.delete('tags');
+        }
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   const params: Omit<PhotoListParams, 'page'> = useMemo(
     () => ({
@@ -37,13 +60,21 @@ export default function PhotosPage() {
 
   const handlePhotoClick = useCallback(
     (photo: Photo) => {
-      setSearchParams({ selected: String(photo.id) });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('selected', String(photo.id));
+        return next;
+      });
     },
     [setSearchParams],
   );
 
   const handleClose = useCallback(() => {
-    setSearchParams({});
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('selected');
+      return next;
+    });
   }, [setSearchParams]);
 
   return (

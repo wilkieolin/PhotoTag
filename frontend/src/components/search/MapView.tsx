@@ -1,8 +1,10 @@
-import { useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import type { LatLngBounds } from 'leaflet';
 import { searchMapBounds } from '../../api/search';
 import { thumbnailUrl } from '../../api/photos';
+import { usePhoto } from '../../hooks/usePhotos';
 import type { Photo } from '../../types/photo';
 import 'leaflet/dist/leaflet.css';
 
@@ -19,19 +21,40 @@ L.Icon.Default.mergeOptions({
 });
 
 function MapEvents({ onBoundsChange }: { onBoundsChange: (bounds: LatLngBounds) => void }) {
-  useMapEvents({
-    moveend: (e) => {
-      onBoundsChange(e.target.getBounds());
-    },
-    zoomend: (e) => {
-      onBoundsChange(e.target.getBounds());
-    },
+  const map = useMapEvents({
+    moveend: (e) => onBoundsChange(e.target.getBounds()),
+    zoomend: (e) => onBoundsChange(e.target.getBounds()),
   });
+
+  // Fetch markers for the initial view too, not just after the first pan/zoom.
+  useEffect(() => {
+    onBoundsChange(map.getBounds());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return null;
 }
 
-export default function MapView() {
+function RecenterOnPhoto({ photo }: { photo: Photo }) {
+  const map = useMap();
+  useEffect(() => {
+    if (photo.latitude != null && photo.longitude != null) {
+      map.setView([photo.latitude, photo.longitude], 15);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photo.id]);
+  return null;
+}
+
+interface Props {
+  highlightPhotoId?: number | null;
+}
+
+export default function MapView({ highlightPhotoId = null }: Props) {
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const navigate = useNavigate();
+  const markerRefs = useRef<Record<number, L.Marker>>({});
+  const { data: highlightPhoto } = usePhoto(highlightPhotoId);
 
   const handleBoundsChange = useCallback(async (bounds: LatLngBounds) => {
     try {
@@ -47,6 +70,13 @@ export default function MapView() {
     }
   }, []);
 
+  // Once the highlighted photo's marker is on screen, pop it open automatically.
+  useEffect(() => {
+    if (highlightPhotoId == null) return;
+    if (!photos.some((p) => p.id === highlightPhotoId)) return;
+    markerRefs.current[highlightPhotoId]?.openPopup();
+  }, [highlightPhotoId, photos]);
+
   return (
     <div className="h-full w-full">
       <MapContainer
@@ -60,9 +90,17 @@ export default function MapView() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapEvents onBoundsChange={handleBoundsChange} />
+        {highlightPhoto && <RecenterOnPhoto photo={highlightPhoto} />}
         {photos.map((photo) => (
           photo.latitude != null && photo.longitude != null && (
-            <Marker key={photo.id} position={[photo.latitude, photo.longitude]}>
+            <Marker
+              key={photo.id}
+              position={[photo.latitude, photo.longitude]}
+              ref={(ref) => {
+                if (ref) markerRefs.current[photo.id] = ref;
+                else delete markerRefs.current[photo.id];
+              }}
+            >
               <Popup>
                 <div className="w-32">
                   <img
@@ -71,6 +109,12 @@ export default function MapView() {
                     className="w-full rounded"
                   />
                   <p className="text-xs mt-1 truncate">{photo.filename}</p>
+                  <button
+                    onClick={() => navigate(`/photos?selected=${photo.id}`)}
+                    className="text-xs text-blue-600 hover:text-blue-800 mt-1 underline"
+                  >
+                    View details
+                  </button>
                 </div>
               </Popup>
             </Marker>
