@@ -11,6 +11,7 @@ interface Props {
 export default function TagApplyPanel({ tags, selectedCount, onApply }: Props) {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [applying, setApplying] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   if (tags.length === 0) return null;
 
@@ -22,9 +23,18 @@ export default function TagApplyPanel({ tags, selectedCount, onApply }: Props) {
 
   const handleApply = async () => {
     setApplying(true);
+    setStatus(null);
+    const appliedCount = selectedCount;
+    const appliedTags = selectedTagIds.length;
     try {
       await onApply(selectedTagIds);
       setSelectedTagIds([]);
+      setStatus({
+        type: 'success',
+        message: `Applied ${appliedTags} tag${appliedTags === 1 ? '' : 's'} to ${appliedCount} photo${appliedCount === 1 ? '' : 's'}`,
+      });
+    } catch {
+      setStatus({ type: 'error', message: 'Failed to apply tags. Please try again.' });
     } finally {
       setApplying(false);
     }
@@ -62,6 +72,11 @@ export default function TagApplyPanel({ tags, selectedCount, onApply }: Props) {
           ? 'Select images below to apply tags'
           : `Apply ${selectedTagIds.length} tag${selectedTagIds.length === 1 ? '' : 's'} to ${selectedCount} selected`}
       </button>
+      {status && (
+        <p className={`text-xs ${status.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+          {status.message}
+        </p>
+      )}
     </div>
   );
 }

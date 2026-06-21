@@ -3,6 +3,7 @@ from fastapi import APIRouter, Query, HTTPException
 
 from ..database import get_db_ctx
 from ..models import PhotoOut, PaginatedResponse, SimilarPhotoResult
+from ..utils.tags import attach_tags
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -43,6 +44,8 @@ async def find_similar(
             if len(similar) >= limit:
                 break
 
+        await attach_tags(db, [s.photo for s in similar])
+
     return similar
 
 
@@ -73,6 +76,8 @@ async def search_by_text(
                     photo=PhotoOut(**dict(row)),
                     similarity=round(similarity, 4),
                 ))
+
+        await attach_tags(db, [s.photo for s in similar])
 
     return similar
 
@@ -141,7 +146,10 @@ async def find_nearby(
                 if p.id not in {x.id for x in results}:
                     results.append(p)
 
-    return results[:limit]
+        results = results[:limit]
+        await attach_tags(db, results)
+
+    return results
 
 
 @router.get("/by-date")

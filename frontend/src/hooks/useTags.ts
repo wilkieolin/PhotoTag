@@ -29,15 +29,20 @@ export function useDeleteTag() {
   });
 }
 
+function invalidatePhotoQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['photo'] });
+  queryClient.invalidateQueries({ queryKey: ['photos'] });
+  queryClient.invalidateQueries({ queryKey: ['photos-infinite'] });
+  queryClient.invalidateQueries({ queryKey: ['similar'] });
+  queryClient.invalidateQueries({ queryKey: ['nearby'] });
+}
+
 export function useAssignTags() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ photoId, tagIds }: { photoId: number; tagIds: number[] }) =>
       assignTags(photoId, tagIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['photo'] });
-      queryClient.invalidateQueries({ queryKey: ['photos'] });
-    },
+    onSuccess: () => invalidatePhotoQueries(queryClient),
   });
 }
 
@@ -46,9 +51,6 @@ export function useRemoveTag() {
   return useMutation({
     mutationFn: ({ photoId, tagId }: { photoId: number; tagId: number }) =>
       removeTag(photoId, tagId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['photo'] });
-      queryClient.invalidateQueries({ queryKey: ['photos'] });
-    },
+    onSuccess: () => invalidatePhotoQueries(queryClient),
   });
 }

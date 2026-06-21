@@ -95,6 +95,14 @@ export default function NearbyPhotos({ photo }: Props) {
                 >
                   {selectedIds.has(p.id) && <Check size={10} className="text-white" />}
                 </button>
+                {p.tags.length > 0 && (
+                  <span
+                    className="absolute top-1 right-1 bg-blue-600 text-white text-[10px] leading-none px-1 py-0.5 rounded-full"
+                    title={p.tags.map((t) => t.name).join(', ')}
+                  >
+                    {p.tags.length}
+                  </span>
+                )}
                 <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-center py-0.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
                   {p.date_taken
                     ? format(new Date(p.date_taken), 'MMM d HH:mm')

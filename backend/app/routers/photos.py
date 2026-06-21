@@ -6,6 +6,7 @@ from pathlib import Path
 from ..database import get_db_ctx
 from ..models import PhotoOut, PaginatedResponse, TagOut
 from ..config import settings
+from ..utils.tags import attach_tags
 
 router = APIRouter(tags=["photos"])
 
@@ -77,10 +78,8 @@ async def list_photos(
         )
         rows = await cursor.fetchall()
 
-    items = []
-    for r in rows:
-        photo = PhotoOut(**dict(r))
-        items.append(photo)
+        items = [PhotoOut(**dict(r)) for r in rows]
+        await attach_tags(db, items)
 
     return PaginatedResponse(
         items=items,
