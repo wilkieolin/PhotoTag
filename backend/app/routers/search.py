@@ -189,13 +189,20 @@ async def photos_in_bounds(
     # Leaflet reports longitude as a continuous "world copy" coordinate when
     # the map is panned across the antimeridian, rather than wrapping it back
     # into -180..180. Normalize before comparing against stored EXIF longitudes.
-    west = ((west + 180) % 360) - 180
-    east = ((east + 180) % 360) - 180
-
-    if west <= east:
-        lon_clause = "longitude BETWEEN ? AND ?"
+    lon_params: tuple = ()
+    if east - west >= 360:
+        # Viewport spans the entire globe (or more) -- every longitude is
+        # visible somewhere in it, so normalizing west/east independently
+        # would collapse the range to an arbitrary, meaningless sliver.
+        lon_clause = "1=1"
     else:
-        lon_clause = "(longitude >= ? OR longitude <= ?)"
+        west_n = ((west + 180) % 360) - 180
+        east_n = ((east + 180) % 360) - 180
+        if west_n <= east_n:
+            lon_clause = "longitude BETWEEN ? AND ?"
+        else:
+            lon_clause = "(longitude >= ? OR longitude <= ?)"
+        lon_params = (west_n, east_n)
 
     async with get_db_ctx() as db:
         cursor = await db.execute(
@@ -204,7 +211,7 @@ async def photos_in_bounds(
                  AND latitude BETWEEN ? AND ?
                  AND {lon_clause}
                LIMIT ?""",
-            (south, north, west, east, limit),
+            (south, north, *lon_params, limit),
         )
         rows = await cursor.fetchall()
 

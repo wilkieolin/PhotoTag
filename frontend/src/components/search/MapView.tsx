@@ -52,6 +52,7 @@ export default function MapView() {
       <MapContainer
         center={[40, -95]}
         zoom={4}
+        worldCopyJump
         className="h-full w-full"
       >
         <TileLayer
